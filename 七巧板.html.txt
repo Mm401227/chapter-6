@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>第六章 巧拼七巧板</title>
+ <style>
+ :root {
+   --bg-color: #f8fafc;
+   --panel-bg: #ffffff;
+   --border-color: #e2e8f0;
+   --text-primary: #1e293b;
+   --text-secondary: #64748b;
+   --accent-color: #6366f1;
+   --danger-color: #ef4444;
+   --sidebar-width: 260px;
+   --selection-blue: #2563eb;
+ }
+ * {
+   box-sizing: border-box;
+   margin: 0;
+   padding: 0;
+   user-select: none;
+   -webkit-user-select: none;
+ }
+ body {
+   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+   background-color: var(--bg-color);
+   color: var(--text-primary);
+   height: 100vh;
+   overflow: hidden;
+   display: flex;
+   flex-direction: column;
+ }
+ header {
+   height: 56px;
+   background: var(--panel-bg);
+   border-bottom: 1px solid var(--border-color);
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   padding: 0 16px;
+   z-index: 10;
+ }
+ .logo-title {
+   font-size: 1.1rem;
+   font-weight: 700;
+   color: var(--text-primary);
+   display: flex;
+   align-items: center;
+   gap: 8px;
+ }
+ .canvas-tabs-bar {
+   display: flex;
+   align-items: center;
+   gap: 6px;
+   background: #f1f5f9;
+   padding: 4px;
+   border-radius: 8px;
+   max-width: 50%;
+   overflow-x: auto;
+ }
+ .tab-item {
+   padding: 6px 12px;
+   font-size: 0.85rem;
+   border-radius: 6px;
+   background: transparent;
+   color: var(--text-secondary);
+   cursor: pointer;
+   white-space: nowrap;
+   display: flex;
+   align-items: center;
+   gap: 6px;
+   transition: all 0.2s;
+ }
+ .tab-item.active {
+   background: var(--panel-bg);
+   color: var(--accent-color);
+   font-weight: 600;
+   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+ }
+ .btn-add-tab {
+   padding: 4px 8px;
+   font-size: 1.1rem;
+   line-height: 1;
+   border: none;
+   background: transparent;
+   color: var(--text-secondary);
+   cursor: pointer;
+   border-radius: 4px;
+ }
+ .btn-add-tab:hover {
+   background: #e2e8f0;
+   color: var(--text-primary);
+ }
+ .toolbar-actions {
+   display: flex;
+   align-items: center;
+   gap: 8px;
+ }
+ .btn {
+   padding: 6px 12px;
+   font-size: 0.85rem;
+   font-weight: 500;
+   border-radius: 6px;
+   border: 1px solid var(--border-color);
+   background: var(--panel-bg);
+   color: var(--text-primary);
+   cursor: pointer;
+   display: inline-flex;
+   align-items: center;
+   gap: 4px;
+   transition: all 0.15s ease;
+ }
+ .btn:hover {
+   background: #f8fafc;
+   border-color: #cbd5e1;
+ }
+ .btn-danger {
+   color: var(--danger-color);
+   border-color: #fecaca;
+ }
+ .btn-danger:hover {
+   background: #fef2f2;
+ }
+ .main-container {
+   flex: 1;
+   display: flex;
+   position: relative;
+   overflow: hidden;
+ }
+ .sidebar {
+   width: var(--sidebar-width);
+   background: var(--panel-bg);
+   border-right: 1px solid var(--border-color);
+   display: flex;
+   flex-direction: column;
+   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+   z-index: 5;
+   position: absolute;
+   top: 0; bottom: 0; left: 0;
+   box-shadow: 2px 0 8px rgba(0,0,0,0.03);
+ }
+ .sidebar.collapsed {
+   transform: translateX(-100%);
+ }
+ .sidebar-content {
+   flex: 1;
+   overflow-y: auto;
+   padding: 16px;
+   display: flex;
+   flex-direction: column;
+   gap: 12px;
+ }
+ .piece-item {
+   background: #fafafa;
+   border: 1px dashed var(--border-color);
+   border-radius: 8px;
+   padding: 10px;
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   gap: 6px;
+   cursor: pointer;
+   transition: all 0.2s ease;
+ }
+ .piece-item:hover {
+   border-color: var(--accent-color);
+   background: #f5f3ff;
+   transform: translateY(-2px);
+ }
+ .piece-label {
+   font-size: 0.8rem;
+   color: var(--text-secondary);
+   font-weight: 500;
+ }
+ .toggle-sidebar-btn {
+   position: absolute;
+   left: var(--sidebar-width);
+   top: 12px;
+   z-index: 6;
+   background: var(--panel-bg);
+   border: 1px solid var(--border-color);
+   border-left: none;
+   padding: 8px 5px;
+   cursor: pointer;
+   border-radius: 0 6px 6px 0;
+   transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+   box-shadow: 2px 0 6px rgba(0, 0, 0, 0.05);
+ }
+ .sidebar.collapsed + .toggle-sidebar-btn {
+   left: 0;
+ }
+ .canvas-container {
+   flex: 1;
+   position: relative;
+   background-color: #f1f5f9;
+   background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px);
+   background-size: 20px 20px;
+   overflow: hidden;
+ }
+ svg#main-canvas {
+   width: 100%;
+   height: 100%;
+   display: block;
+ }
+ .tangram-piece {
+   cursor: move;
+   will-change: transform;
+ }
+ 
+ .rotate-handle-circle {
+   cursor: grab;
+   transition: fill 0.15s, stroke-width 0.15s;
+ }
+ .rotate-handle-circle:hover, .rotate-handle-circle:active {
+   cursor: grabbing;
+   fill: #2563eb !important;
+ }
+ .flip-button-icon {
+   cursor: pointer;
+ }
+ .flip-button-icon:hover circle {
+   fill: #2563eb;
+ }
+ .flip-button-icon:hover path {
+   stroke: #ffffff;
+ }
+
+ .ios-modal-overlay {
+   position: fixed;
+   top: 0; left: 0; right: 0; bottom: 0;
+   background: rgba(0, 0, 0, 0.3);
+   backdrop-filter: blur(8px);
+   -webkit-backdrop-filter: blur(8px);
+   z-index: 9999;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   opacity: 0;
+   pointer-events: none;
+   transition: opacity 0.2s ease;
+ }
+ .ios-modal-overlay.active {
+   opacity: 1;
+   pointer-events: auto;
+ }
+ .ios-modal-dialog {
+   width: 280px;
+   background: rgba(255, 255, 255, 0.88);
+   backdrop-filter: blur(20px);
+   -webkit-backdrop-filter: blur(20px);
+   border-radius: 14px;
+   box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+   text-align: center;
+   overflow: hidden;
+   transform: scale(1.1);
+   transition: transform 0.2s ease;
+ }
+ .ios-modal-overlay.active .ios-modal-dialog {
+   transform: scale(1);
+ }
+ .ios-modal-content {
+   padding: 18px 16px;
+ }
+ .ios-modal-title {
+   font-size: 17px;
+   font-weight: 600;
+   color: #000;
+   margin-bottom: 4px;
+ }
+ .ios-modal-message {
+   font-size: 13px;
+   color: #3c3c4399;
+   line-height: 1.35;
+ }
+ .ios-modal-input {
+   width: 100%;
+   margin-top: 10px;
+   padding: 6px 10px;
+   border-radius: 6px;
+   border: 1px solid #ccc;
+   font-size: 14px;
+   outline: none;
+   background: #fff;
+ }
+ .ios-modal-buttons {
+   display: flex;
+   border-top: 0.5px solid rgba(60, 60, 67, 0.29);
+ }
+ .ios-modal-btn {
+   flex: 1;
+   height: 44px;
+   line-height: 44px;
+   background: transparent;
+   border: none;
+   font-size: 17px;
+   color: #007aff;
+   cursor: pointer;
+   font-weight: 400;
+ }
+ .ios-modal-btn:active {
+   background: rgba(0, 0, 0, 0.05);
+ }
+ .ios-modal-btn.primary {
+   font-weight: 600;
+ }
+ .ios-modal-btn.destructive {
+   color: #ff3b30;
+   font-weight: 600;
+ }
+ .ios-modal-btn + .ios-modal-btn {
+   border-left: 0.5px solid rgba(60, 60, 67, 0.29);
+ }
+ </style>
+</head>
+<body>
+ <header>
+   <div class="logo-title">
+     <span>巧拼七巧板</span>
+   </div>
+   <div class="canvas-tabs-bar" id="tabs-bar">
+     <button class="btn-add-tab" id="btn-add-canvas" title="新建画布">+</button>
+   </div>
+   <div class="toolbar-actions">
+     <button class="btn" id="btn-clear-canvas">一键清空</button>
+     <button class="btn btn-danger" id="btn-delete-piece">删除选中</button>
+     <button class="btn btn-danger" id="btn-delete-canvas">删除当前画布</button>
+   </div>
+ </header>
+ <div class="main-container">
+   <aside class="sidebar" id="sidebar">
+     <div class="sidebar-content" id="palette-list"></div>
+   </aside>
+   <button class="toggle-sidebar-btn" id="btn-toggle-sidebar" title="展开/折叠侧边栏">◀</button>
+   <main class="canvas-container" id="canvas-container">
+     <svg id="main-canvas"></svg>
+   </main>
+ </div>
+
+ <div class="ios-modal-overlay" id="ios-modal">
+   <div class="ios-modal-dialog">
+     <div class="ios-modal-content">
+       <div class="ios-modal-title" id="ios-modal-title">提示</div>
+       <div class="ios-modal-message" id="ios-modal-msg">内容</div>
+       <input type="text" class="ios-modal-input" id="ios-modal-input" style="display: none;">
+     </div>
+     <div class="ios-modal-buttons" id="ios-modal-btns"></div>
+   </div>
+ </div>
+
+ <script>
+ const PALETTE_COLORS = {
+   green: '#B8F8D6',
+   yellow: '#FFF8C8',
+   peach: '#FFE2CE',
+   pink: '#FCD2E0',
+   purple: '#F4E2FF'
+ };
+
+ const TANGRAM_DEFINITIONS = [
+   { type: 'large-tri-1', name: '大三', color: PALETTE_COLORS.green, rawPoints: [{x:0,y:0}, {x:200,y:0}, {x:100,y:100}] },
+   { type: 'large-tri-2', name: '大三', color: PALETTE_COLORS.yellow, rawPoints: [{x:0,y:0}, {x:100,y:100}, {x:0,y:200}] },
+   { type: 'medium-tri', name: '中三', color: PALETTE_COLORS.peach, rawPoints: [{x:200,y:0}, {x:200,y:100}, {x:100,y:100}] },
+   { type: 'small-tri-1', name: '小三', color: PALETTE_COLORS.pink, rawPoints: [{x:100,y:100}, {x:150,y:50}, {x:150,y:150}] },
+   { type: 'small-tri-2', name: '小三', color: PALETTE_COLORS.purple, rawPoints: [{x:100,y:100}, {x:50,y:150}, {x:0,y:100}] },
+   { type: 'square', name: '小正', color: PALETTE_COLORS.green, rawPoints: [{x:100,y:100}, {x:150,y:50}, {x:200,y:100}, {x:150,y:150}] },
+   { type: 'parallelogram', name: '小平', color: PALETTE_COLORS.pink, rawPoints: [{x:0,y:200}, {x:100,y:200}, {x:150,y:150}, {x:50,y:150}] }
+ ];
+
+ const VERTEX_SNAP_DISTANCE = 18; // 顶点磁吸判定距离 (px)
+ const ANGLE_SNAP_INTERVAL = 45;   // 角度磁吸步长：0°, 45°, 90°, 135°...
+ const ANGLE_SNAP_THRESHOLD = 4.5; // 旋转靠近目标角度多少度以内自动吸附 (deg)
+
+ let canvases = [
+   { id: 1, name: 'Sheet 1', pieces: [] }
+ ];
+ let activeCanvasId = 1;
+ let canvasIdCounter = 1;
+ let pieceIdCounter = 0;
+ let selectedPieceId = null;
+
+ const svgCanvas = document.getElementById('main-canvas');
+ const paletteList = document.getElementById('palette-list');
+ const sidebar = document.getElementById('sidebar');
+ const tabsBar = document.getElementById('tabs-bar');
+ const btnAddCanvas = document.getElementById('btn-add-canvas');
+
+ function showIOSAlert({ title = '提示', message = '', hasInput = false, defaultValue = '', buttons = [] }) {
+   return new Promise((resolve) => {
+     const overlay = document.getElementById('ios-modal');
+     const titleEl = document.getElementById('ios-modal-title');
+     const msgEl = document.getElementById('ios-modal-msg');
+     const inputEl = document.getElementById('ios-modal-input');
+     const btnsEl = document.getElementById('ios-modal-btns');
+     titleEl.innerText = title;
+     msgEl.innerText = message;  
+     if (hasInput) {
+       inputEl.style.display = 'block';
+       inputEl.value = defaultValue;
+       setTimeout(() => inputEl.focus(), 50);
+     } else {
+       inputEl.style.display = 'none';
+     }
+     btnsEl.innerHTML = '';
+     buttons.forEach(btn => {
+       const btnEl = document.createElement('button');
+       btnEl.className = `ios-modal-btn ${btn.style || ''}`;
+       btnEl.innerText = btn.text;
+       btnEl.onclick = () => {
+         overlay.classList.remove('active');
+         resolve({ value: btn.value, inputValue: inputEl.value.trim() });
+       };
+       btnsEl.appendChild(btnEl);
+     });
+     overlay.classList.add('active');
+   });
+ }
+
+ function init() {
+   renderPalette();
+   renderTabs();
+   setupEventListeners();
+   renderCurrentCanvasPieces();
+ }
+
+ function renderPalette() {
+   paletteList.innerHTML = '';
+   TANGRAM_DEFINITIONS.forEach(def => {
+     const item = document.createElement('div');
+     item.className = 'piece-item';
+     item.setAttribute('draggable', 'true');
+     
+     const pointsStr = def.rawPoints.map(p => `${p.x},${p.y}`).join(' ');
+     item.innerHTML = `
+       <svg width="64" height="64" viewBox="-10 -10 220 220">
+         <polygon points="${pointsStr}" fill="${def.color}" stroke="#64748b" stroke-width="2" stroke-linejoin="round"/>
+       </svg>
+       <span class="piece-label">${def.name}</span>
+     `;
+     item.addEventListener('dragstart', (e) => {
+       e.dataTransfer.setData('text/plain', def.type);
+       e.dataTransfer.effectAllowed = 'copy';
+     });
+     item.addEventListener('click', (e) => {
+       e.preventDefault();
+       const rect = svgCanvas.getBoundingClientRect();
+       const cx = rect.width / 2 || 300;
+       const cy = rect.height / 2 || 200;
+       const pieceData = createPieceData(def.type, cx, cy);
+       if (pieceData) {
+         const currentCanvas = getCurrentCanvas();
+         currentCanvas.pieces.push(pieceData);
+         renderPieceSVG(pieceData);
+         highlightSelectedPiece(pieceData.id);
+       }
+     });
+     paletteList.appendChild(item);
+   });
+ }
+
+ function renderTabs() {
+   const existingTabs = tabsBar.querySelectorAll('.tab-item');
+   existingTabs.forEach(t => t.remove());
+   canvases.forEach(c => {
+     const tab = document.createElement('div');
+     tab.className = `tab-item ${c.id === activeCanvasId ? 'active' : ''}`;
+     tab.innerText = c.name;
+     tab.title = "单击切换，双击重命名";
+     
+     tab.addEventListener('click', () => switchCanvas(c.id));
+     tab.addEventListener('dblclick', (e) => {
+       e.stopPropagation();
+       renameCanvas(c.id);
+     });
+     tabsBar.insertBefore(tab, btnAddCanvas);
+   });
+ }
+
+ async function renameCanvas(canvasId) {
+   const targetCanvas = canvases.find(c => c.id === canvasId);
+   if (!targetCanvas) return;
+   const result = await showIOSAlert({
+     title: '重命名画布',
+     message: '请输入新的画布名称：',
+     hasInput: true,
+     defaultValue: targetCanvas.name,
+     buttons: [
+       { text: '取消', style: '', value: false },
+       { text: '保存', style: 'primary', value: true }
+     ]
+   });
+   if (result.value && result.inputValue) {
+     targetCanvas.name = result.inputValue;
+     renderTabs();
+   }
+ }
+
+ function switchCanvas(id) {
+   if (activeCanvasId === id) return;
+   highlightSelectedPiece(null);
+   activeCanvasId = id;
+   renderTabs();
+   renderCurrentCanvasPieces();
+ }
+
+ function createNewCanvas() {
+   canvasIdCounter++;
+   const newCanvas = {
+     id: canvasIdCounter,
+     name: `Sheet ${canvasIdCounter}`,
+     pieces: []
+   };
+   canvases.push(newCanvas);
+   switchCanvas(newCanvas.id);
+ }
+
+ async function deleteCurrentCanvas() {
+   if (canvases.length <= 1) {
+     showIOSAlert({
+       title: '无法删除',
+       message: '至少需要保留一个画布！',
+       buttons: [{ text: '好的', style: 'primary' }]
+     });
+     return;
+   }
+   const res = await showIOSAlert({
+     title: '删除画布',
+     message: `确定要删除当前【${getCurrentCanvas().name}】吗？`,
+     buttons: [
+       { text: '取消', style: '', value: false },
+       { text: '删除', style: 'destructive', value: true }
+     ]
+   });
+   if (res.value) {
+     canvases = canvases.filter(c => c.id !== activeCanvasId);
+     activeCanvasId = canvases[0].id;
+     highlightSelectedPiece(null);
+     renderTabs();
+     renderCurrentCanvasPieces();
+   }
+ }
+
+ async function clearCurrentCanvas() {
+   const currentCanvas = getCurrentCanvas();
+   if (!currentCanvas || currentCanvas.pieces.length === 0) return;
+   const res = await showIOSAlert({
+     title: '清空画布',
+     message: '确定要清空当前画布上的所有图形吗？',
+     buttons: [
+       { text: '取消', style: '', value: false },
+       { text: '清空', style: 'destructive', value: true }
+     ]
+   });
+   if (res.value) {
+     currentCanvas.pieces = [];
+     highlightSelectedPiece(null);
+     renderCurrentCanvasPieces();
+   }
+ }
+
+ function getCurrentCanvas() {
+   return canvases.find(c => c.id === activeCanvasId);
+ }
+
+ function createPieceData(type, x, y) {
+   const def = TANGRAM_DEFINITIONS.find(d => d.type === type);
+   if (!def) return null;
+   const id = 'piece-' + (++pieceIdCounter);
+
+   let sumX = 0, sumY = 0;
+   def.rawPoints.forEach(p => { sumX += p.x; sumY += p.y; });
+   const cx = sumX / def.rawPoints.length;
+   const cy = sumY / def.rawPoints.length;
+
+   const localPoints = def.rawPoints.map(p => ({
+     x: Number((p.x - cx).toFixed(4)),
+     y: Number((p.y - cy).toFixed(4))
+   }));
+
+   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+   localPoints.forEach(p => {
+     if (p.x < minX) minX = p.x;
+     if (p.x > maxX) maxX = p.x;
+     if (p.y < minY) minY = p.y;
+     if (p.y > maxY) maxY = p.y;
+   });
+
+   return {
+     id,
+     type: def.type,
+     name: def.name,
+     color: def.color,
+     rawPoints: localPoints,
+     points: localPoints.map(p => `${p.x},${p.y}`).join(' '),
+     bbox: { minX, maxX, minY, maxY, width: maxX - minX, height: maxY - minY },
+     x: Math.round(x),
+     y: Math.round(y),
+     rotation: 0,
+     scaleX: 1
+   };
+ }
+
+ function renderCurrentCanvasPieces() {
+   svgCanvas.innerHTML = '';
+   const currentCanvas = getCurrentCanvas();
+   if (!currentCanvas) return;
+   currentCanvas.pieces.forEach(piece => renderPieceSVG(piece));
+   if (selectedPieceId) highlightSelectedPiece(selectedPieceId);
+ }
+
+ function renderPieceSVG(piece) {
+   const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+   g.setAttribute('id', piece.id);
+   g.setAttribute('class', 'tangram-piece');
+   updateTransform(g, piece);
+
+   const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+   polygon.setAttribute('points', piece.points);
+   polygon.setAttribute('fill', piece.color);
+   polygon.setAttribute('stroke', '#475569');
+   polygon.setAttribute('stroke-width', '1.5');
+   polygon.setAttribute('stroke-linejoin', 'round');
+   g.appendChild(polygon);
+
+   const controlsG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+   controlsG.setAttribute('class', 'selection-controls');
+   controlsG.style.display = 'none';
+
+   const padding = 10;
+   const bMinX = piece.bbox.minX - padding;
+   const bMaxX = piece.bbox.maxX + padding;
+   const bMinY = piece.bbox.minY - padding;
+   const bMaxY = piece.bbox.maxY + padding;
+   const bWidth = bMaxX - bMinX;
+   const bHeight = bMaxY - bMinY;
+
+   const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+   rect.setAttribute('x', bMinX);
+   rect.setAttribute('y', bMinY);
+   rect.setAttribute('width', bWidth);
+   rect.setAttribute('height', bHeight);
+   rect.setAttribute('fill', 'none');
+   rect.setAttribute('stroke', '#2563eb');
+   rect.setAttribute('stroke-width', '1.2');
+   rect.setAttribute('stroke-dasharray', '4 3');
+   controlsG.appendChild(rect);
+
+   const cornerSize = 7;
+   const corners = [
+     { x: bMinX - cornerSize / 2, y: bMinY - cornerSize / 2 },
+     { x: bMaxX - cornerSize / 2, y: bMinY - cornerSize / 2 },
+     { x: bMinX - cornerSize / 2, y: bMaxY - cornerSize / 2 },
+     { x: bMaxX - cornerSize / 2, y: bMaxY - cornerSize / 2 }
+   ];
+   corners.forEach(c => {
+     const sq = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+     sq.setAttribute('x', c.x);
+     sq.setAttribute('y', c.y);
+     sq.setAttribute('width', cornerSize);
+     sq.setAttribute('height', cornerSize);
+     sq.setAttribute('fill', '#ffffff');
+     sq.setAttribute('stroke', '#2563eb');
+     sq.setAttribute('stroke-width', '1.5');
+     controlsG.appendChild(sq);
+   });
+
+   const handleY = bMinY - 30;
+   const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+   line.setAttribute('x1', 0);
+   line.setAttribute('y1', bMinY);
+   line.setAttribute('x2', 0);
+   line.setAttribute('y2', handleY);
+   line.setAttribute('stroke', '#2563eb');
+   line.setAttribute('stroke-width', '1.2');
+   controlsG.appendChild(line);
+
+   const rotateCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+   rotateCircle.setAttribute('cx', 0);
+   rotateCircle.setAttribute('cy', handleY);
+   rotateCircle.setAttribute('r', 9);
+   rotateCircle.setAttribute('fill', '#ffffff');
+   rotateCircle.setAttribute('stroke', '#2563eb');
+   rotateCircle.setAttribute('stroke-width', '2');
+   rotateCircle.setAttribute('class', 'rotate-handle-circle');
+   controlsG.appendChild(rotateCircle);
+
+   if (piece.type === 'parallelogram') {
+     const flipG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+     flipG.setAttribute('class', 'flip-button-icon');
+     flipG.setAttribute('transform', `translate(${bMaxX}, ${bMinY - 12})`);
+
+     const flipCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+     flipCircle.setAttribute('cx', 0);
+     flipCircle.setAttribute('cy', 0);
+     flipCircle.setAttribute('r', 11);
+     flipCircle.setAttribute('fill', '#ffffff');
+     flipCircle.setAttribute('stroke', '#2563eb');
+     flipCircle.setAttribute('stroke-width', '1.5');
+
+     const flipPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+     flipPath.setAttribute('d', 'M-5,0 L5,0 M-2,-3 L-5,0 L-2,3 M2,-3 L5,0 L2,3');
+     flipPath.setAttribute('stroke', '#2563eb');
+     flipPath.setAttribute('stroke-width', '1.2');
+     flipPath.setAttribute('fill', 'none');
+
+     flipG.appendChild(flipCircle);
+     flipG.appendChild(flipPath);
+     controlsG.appendChild(flipG);
+
+     flipG.addEventListener('pointerdown', (e) => {
+       e.stopPropagation();
+       piece.scaleX = (piece.scaleX || 1) * -1;
+       updateTransform(g, piece);
+       applyVertexSnapping(piece);
+       updateTransform(g, piece);
+     });
+   }
+
+   g.appendChild(controlsG);
+   svgCanvas.appendChild(g);
+
+   bindPieceEvents(g, piece, rotateCircle);
+ }
+
+ function updateTransform(el, piece) {
+   const scaleX = piece.scaleX || 1;
+   el.setAttribute('transform', `translate(${piece.x}, ${piece.y}) rotate(${piece.rotation}) scale(${scaleX}, 1)`);
+ }
+
+ function highlightSelectedPiece(id) {
+   if (selectedPieceId && selectedPieceId !== id) {
+     const prev = document.getElementById(selectedPieceId);
+     if (prev) {
+       const prevCtrl = prev.querySelector('.selection-controls');
+       if (prevCtrl) prevCtrl.style.display = 'none';
+     }
+   }
+   selectedPieceId = id;
+   if (id) {
+     const current = document.getElementById(id);
+     if (current) {
+       const currentCtrl = current.querySelector('.selection-controls');
+       if (currentCtrl) currentCtrl.style.display = 'block';
+       svgCanvas.appendChild(current);
+     }
+   }
+ }
+
+ // 计算标准角度磁吸吸附（0°, 45°, 90°, 135°...）
+ function snapAngle(rawAngle) {
+   let normalized = rawAngle % 360;
+   if (normalized < 0) normalized += 360;
+   
+   const nearestStep = Math.round(normalized / ANGLE_SNAP_INTERVAL) * ANGLE_SNAP_INTERVAL;
+   const diff = Math.abs(normalized - nearestStep);
+
+   if (diff <= ANGLE_SNAP_THRESHOLD || Math.abs(diff - 360) <= ANGLE_SNAP_THRESHOLD) {
+     return nearestStep % 360;
+   }
+   return rawAngle;
+ }
+
+ function getTransformedVertices(piece) {
+   const rad = (piece.rotation * Math.PI) / 180;
+   const cos = Math.cos(rad);
+   const sin = Math.sin(rad);
+   const sx = piece.scaleX || 1;
+
+   return piece.rawPoints.map(p => {
+     const localX = p.x * sx;
+     const localY = p.y;
+     const rx = localX * cos - localY * sin;
+     const ry = localX * sin + localY * cos;
+     return {
+       x: piece.x + rx,
+       y: piece.y + ry
+     };
+   });
+ }
+
+ function applyVertexSnapping(currentPiece) {
+   const currentCanvas = getCurrentCanvas();
+   if (!currentCanvas) return;
+
+   const currentVertices = getTransformedVertices(currentPiece);
+   const otherPieces = currentCanvas.pieces.filter(p => p.id !== currentPiece.id);
+
+   let minDistance = VERTEX_SNAP_DISTANCE;
+   let snapOffsetX = 0;
+   let snapOffsetY = 0;
+   let foundSnap = false;
+
+   for (const otherPiece of otherPieces) {
+     const targetVertices = getTransformedVertices(otherPiece);
+     for (const cV of currentVertices) {
+       for (const tV of targetVertices) {
+         const dx = tV.x - cV.x;
+         const dy = tV.y - cV.y;
+         const dist = Math.hypot(dx, dy);
+
+         if (dist < minDistance) {
+           minDistance = dist;
+           snapOffsetX = dx;
+           snapOffsetY = dy;
+           foundSnap = true;
+         }
+       }
+     }
+   }
+
+   if (foundSnap) {
+     currentPiece.x += snapOffsetX;
+     currentPiece.y += snapOffsetY;
+   }
+ }
+
+ function bindPieceEvents(groupEl, piece, rotateCircle) {
+   let isDragging = false;
+   let isRotating = false;
+   let startX, startY, startPieceX, startPieceY;
+   let startAngle = 0, startRotation = 0;
+   let centerX = 0, centerY = 0;
+
+   groupEl.addEventListener('pointerdown', (e) => {
+     if (isRotating) return;
+     e.stopPropagation();
+     highlightSelectedPiece(piece.id);
+     isDragging = true;
+     groupEl.setPointerCapture(e.pointerId);
+     startX = e.clientX;
+     startY = e.clientY;
+     startPieceX = piece.x;
+     startPieceY = piece.y;
+   });
+
+   groupEl.addEventListener('pointermove', (e) => {
+     if (isDragging) {
+       const dx = e.clientX - startX;
+       const dy = e.clientY - startY;
+       piece.x = startPieceX + dx;
+       piece.y = startPieceY + dy;
+       updateTransform(groupEl, piece);
+     }
+   });
+
+   const handlePointerUp = (e) => {
+     if (isDragging) {
+       applyVertexSnapping(piece);
+       updateTransform(groupEl, piece);
+       isDragging = false;
+     }
+   };
+
+   groupEl.addEventListener('pointerup', handlePointerUp);
+   groupEl.addEventListener('pointercancel', handlePointerUp);
+
+   // 连续旋转 + 45° 视角卡位磁吸
+   rotateCircle.addEventListener('pointerdown', (e) => {
+     e.stopPropagation();
+     highlightSelectedPiece(piece.id);
+     isRotating = true;
+     rotateCircle.setPointerCapture(e.pointerId);
+
+     const rect = svgCanvas.getBoundingClientRect();
+     centerX = rect.left + piece.x;
+     centerY = rect.top + piece.y;
+
+     startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI);
+     startRotation = piece.rotation;
+   });
+
+   rotateCircle.addEventListener('pointermove', (e) => {
+     if (!isRotating) return;
+     e.stopPropagation();
+
+     const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI);
+     let angleDiff = currentAngle - startAngle;
+
+     if (angleDiff > 180) angleDiff -= 360;
+     if (angleDiff < -180) angleDiff += 360;
+
+     const rawRotation = startRotation + angleDiff;
+     // 实时进行 45° 角度吸附修正
+     piece.rotation = snapAngle(rawRotation);
+     updateTransform(groupEl, piece);
+   });
+
+   const endRotate = (e) => {
+     if (isRotating) {
+       e.stopPropagation();
+       // 确保最终释放时精准吸附在最近的 45° 整数刻度上
+       piece.rotation = snapAngle(piece.rotation);
+       applyVertexSnapping(piece);
+       updateTransform(groupEl, piece);
+       isRotating = false;
+     }
+   };
+
+   rotateCircle.addEventListener('pointerup', endRotate);
+   rotateCircle.addEventListener('pointercancel', endRotate);
+ }
+
+ function setupEventListeners() {
+   const container = document.getElementById('canvas-container');
+   container.addEventListener('dragover', (e) => e.preventDefault());
+   container.addEventListener('drop', (e) => {
+     e.preventDefault();
+     const type = e.dataTransfer.getData('text/plain');
+     if (type) {
+       const rect = svgCanvas.getBoundingClientRect();
+       const x = e.clientX - rect.left;
+       const y = e.clientY - rect.top;
+       const pieceData = createPieceData(type, x, y);
+       if (pieceData) {
+         const currentCanvas = getCurrentCanvas();
+         currentCanvas.pieces.push(pieceData);
+         renderPieceSVG(pieceData);
+         highlightSelectedPiece(pieceData.id);
+       }
+     }
+   });
+
+   svgCanvas.addEventListener('click', (e) => {
+     if (e.target === svgCanvas) {
+       highlightSelectedPiece(null);
+     }
+   });
+
+   btnAddCanvas.addEventListener('click', createNewCanvas);
+   document.getElementById('btn-clear-canvas').addEventListener('click', clearCurrentCanvas);
+   document.getElementById('btn-delete-canvas').addEventListener('click', deleteCurrentCanvas);
+   
+   document.getElementById('btn-delete-piece').addEventListener('click', () => {
+     if (!selectedPieceId) return;
+     const el = document.getElementById(selectedPieceId);
+     if (el) el.remove();
+     const currentCanvas = getCurrentCanvas();
+     currentCanvas.pieces = currentCanvas.pieces.filter(p => p.id !== selectedPieceId);
+     highlightSelectedPiece(null);
+   });
+
+   document.getElementById('btn-toggle-sidebar').addEventListener('click', () => {
+     sidebar.classList.toggle('collapsed');
+   });
+
+   window.addEventListener('keydown', (e) => {
+     if (e.key === 'Delete' || e.key === 'Backspace') {
+       if (e.target.tagName !== 'INPUT') {
+         document.getElementById('btn-delete-piece').click();
+       }
+     }
+   });
+ }
+
+ window.addEventListener('DOMContentLoaded', init);
+ </script>
+</body>
+</html>
